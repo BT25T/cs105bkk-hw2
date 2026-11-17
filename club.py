@@ -16,20 +16,54 @@ class Club:
 
     def add_event(self, title: str, capacity: int) -> Event:
         """Make a new Event, store it under its title, and return it."""
-        raise NotImplementedError("core: check capacity and title, then store and return a new Event")
+        if title in self.events.keys() or capacity <= 0:
+            raise ValueError
+        event = (Event(title, capacity))
+        self.events[title] = event
+        return event
 
     def event(self, title: str) -> Event:
         """Return the event with this title, or raise UnknownEventError."""
-        raise NotImplementedError("core: look the event up, and turn a KeyError into UnknownEventError")
+        for event in self.events.values():
+            if event.title == title:
+                return event
+        raise UnknownEventError(title)
 
     def handle(self, line: str) -> str:
         """Answer one chat command, such as "join, Muay Thai basics, Nino", with one sentence."""
-        raise NotImplementedError("core: answer a join or leave command, or say sorry")
+        _line = [item.strip() for item in line.split(",")]
+        command = _line[0]
+        if command not in ["join", "leave"] or len(_line) != 3:
+            return f"Sorry, I don't understand '{command}'."
+        title, member = _line[1], _line[2]
+        try:
+            event = self.event(title)
+            if command == 'join':
+                initial_seats = event.seats_left()
+                event.sign_up(member)
+                if initial_seats == 0:
+                    return f"{member} is on the waitlist for {title}."
+                return f"{member} has a seat at {title}."
+    
+            if command == 'leave':
+                new_member = event.cancel(member)
+                if new_member is None:
+                    return f"{member} left {title}."
+                return f"{member} left {title}. {new_member} gets the seat."
+
+        except SignupError as e:
+            return f"Sorry, {e}." 
 
     def attendance(self) -> dict[str, int]:
         """How many events each member has a seat at. The waitlist does not count."""
-        raise NotImplementedError("core: count each member's seats over all the events")
-
+        member_list = {}
+        for _, event in self.events.items():
+            for member in event.seats:
+                if member not in member_list:
+                    member_list[member] = 1
+                else:
+                    member_list[member] += 1
+        return member_list
 
 if __name__ == "__main__":
     # Provided: a short run of the chat bot. It runs only with `python club.py`, not on import.
